@@ -10,6 +10,14 @@ TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 #   postgresql://postgres.xxxxxxxx:YOUR-PASSWORD@aws-0-region.pooler.supabase.com:5432/postgres
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# --- Vercel webhook deployment only (unused by local polling mode) ---
+# Random secret Telegram echoes back on every webhook POST (X-Telegram-Bot-Api-Secret-Token
+# header) so /webhook can reject requests that didn't actually come from Telegram.
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET")
+# Random secret your external cron pinger (e.g. cron-job.org) must send to /cron-tick,
+# so a stranger can't spam your users' reminders by hitting the endpoint themselves.
+CRON_SECRET = os.getenv("CRON_SECRET")
+
 # --- Defaults for a new user ---
 DEFAULT_GOAL_ML = 2000
 DEFAULT_REMINDER_FREQUENCY_MIN = 60

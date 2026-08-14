@@ -4,7 +4,18 @@ A Telegram bot that helps you keep up daily water intake: goals, reminders,
 logging, progress, streaks, and history — built from the functional
 requirements spec.
 
-## Setup
+The bot can run two ways, sharing the same handlers/database/business-logic
+code:
+
+- **Locally, via long-polling** (`main.py`) — simplest for development.
+- **On Vercel, via a webhook** (`app.py`) — for a deployment that isn't
+  tied to your machine being on. See "Deploying to Vercel" below.
+
+Only one of these can be active for a given bot at a time (Telegram will
+reject long-polling while a webhook is set) — `set_webhook.py` switches
+between them.
+
+## Local setup (polling)
 
 ```bash
 python3 -m venv venv
@@ -17,13 +28,59 @@ python main.py
 Get a token from [@BotFather](https://t.me/BotFather) on Telegram and put it
 in `.env` as `TELEGRAM_BOT_TOKEN`.
 
-Get your database connection string from the Supabase dashboard: your
-project → **Project Settings → Database → Connection string → URI tab**.
-Use the **Session pooler** or **Transaction pooler** option (works over
-plain IPv4) rather than "Direct connection" unless you know your network
-has IPv6. Put it in `.env` as `DATABASE_URL`. The bot creates its own
-tables automatically the first time it runs — no manual schema setup
-needed.
+Get your database connection string from the Supabase dashboard: open your
+project, click the green **Connect** button near the top, and choose
+**Session pooler** or **Transaction pooler** (works over plain IPv4) rather
+than "Direct connection" unless you know your network has IPv6. Put it in
+`.env` as `DATABASE_URL`. The bot creates its own tables automatically the
+first time it runs — no manual schema setup needed.
+
+## Deploying to Vercel (webhook + free external cron)
+
+Vercel Functions are request/response — there's no long-running process to
+poll Telegram or tick a scheduler in the background, so this mode works
+differently: Telegram pushes updates to a webhook endpoint, and an
+**external** free scheduler (not Vercel's own cron) pings a reminder-check
+endpoint once a minute. This matters because Vercel's free Hobby-plan cron
+jobs can only run once a day with imprecise timing — nowhere near frequent
+enough for FR-06 reminder frequencies like "every 60 minutes."
+
+1. **Push this repo to GitHub** (if you haven't already) and import it as a
+   new project in the [Vercel dashboard](https://vercel.com/new). Vercel
+   auto-detects `app.py` as the Python entrypoint from `requirements.txt`.
+
+2. **Generate two random secrets** (one per command, or run twice):
+   ```bash
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+
+3. **Set environment variables** in the Vercel project (Settings →
+   Environment Variables): `TELEGRAM_BOT_TOKEN`, `DATABASE_URL`,
+   `TELEGRAM_WEBHOOK_SECRET` (first secret from step 2), `CRON_SECRET`
+   (second secret). Deploy.
+
+4. **Point Telegram's webhook at your deployment.** Locally, with your
+   `.env` containing the *same* `TELEGRAM_WEBHOOK_SECRET` you set in
+   Vercel:
+   ```bash
+   python set_webhook.py https://your-project.vercel.app
+   ```
+   (To switch back to local polling later: `python set_webhook.py --delete`.)
+
+5. **Set up the external cron pinger** for reminders. Create a free account
+   at [cron-job.org](https://cron-job.org) (or any similar service) and add
+   a job that:
+   - Hits `https://your-project.vercel.app/cron-tick` every 1 minute
+   - Sends header `x-cron-secret: <your CRON_SECRET from step 2>`
+
+6. Message your bot on Telegram to confirm it responds. Reminders will start
+   firing on the schedule each user configured, checked every time the
+   external cron pings `/cron-tick`.
+
+`requirements.txt` includes both `fastapi` (used only by `app.py`) and
+`APScheduler` (used only by `main.py`) so the same file works for either run
+mode — harmless either way, though you can trim whichever half you don't
+need if you want a smaller Vercel bundle.
 
 ## What's implemented
 
@@ -62,37 +119,42 @@ needed.
 ## Project layout
 
 ```
-main.py            entry point: wires up aiogram, DB, and the scheduler
-config.py          static configuration/constants
-database.py        Postgres/Supabase schema + queries (asyncpg)
-utils.py           timezone/date helpers, streak rollover, formatting
-logic.py           shared "log water + fire notifications" business logic
-keyboards.py       inline keyboard builders
-states.py          aiogram FSM states for multi-step conversations
-scheduler.py        reminder background job
-handlers/           one router module per feature area
-  start.py          /start + onboarding
-  water.py          /water + drink logging
-  progress.py        /progress
-  streaks.py         /streak
-  stats.py            /stats
-  settings.py         /settings
-  pause.py            /pause, /resume
-  help.py             /help
+main.py             local entry point: aiogram polling + in-process APScheduler
+app.py               Vercel entry point: FastAPI app, /webhook + /cron-tick
+set_webhook.py        one-off helper to point/unpoint Telegram's webhook
+config.py            static configuration/constants
+database.py          Postgres/Supabase schema + queries (asyncpg)
+pg_storage.py         Postgres-backed aiogram FSM storage (used by both run modes)
+reminder_logic.py     the actual "who's due a reminder right now" logic
+scheduler.py          wraps reminder_logic in APScheduler, for main.py only
+utils.py             timezone/date helpers, streak rollover, formatting
+logic.py             shared "log water + fire notifications" business logic
+keyboards.py         inline keyboard builders
+states.py            aiogram FSM states for multi-step conversations
+handlers/             one router module per feature area
+  start.py           /start + onboarding
+  water.py           /water + drink logging
+  progress.py         /progress
+  streaks.py          /streak
+  stats.py             /stats
+  settings.py          /settings
+  pause.py             /pause, /resume
+  help.py              /help
 ```
 
 ## Notes / next steps if you productionize this
 
-- The FSM storage is in-memory (`MemoryStorage`); if you scale to multiple
-  processes, swap it for `RedisStorage`.
+- FSM (conversation) state lives in Postgres (`pg_storage.py`), not memory —
+  needed because Vercel Functions don't share memory between invocations,
+  and it has the side benefit of surviving a local restart too.
 - `timezonefinder` is optional — the bot degrades gracefully (manual
   timezone selection still works) if it isn't installed.
 - For heavier load, consider moving the per-tick "loop over all users" in
-  `scheduler.py` to a per-user APScheduler job so it scales better with
-  large user counts.
+  `reminder_logic.py` to a per-user job so it scales better with large user
+  counts, and watch Vercel's function execution-time limit if the user
+  count grows large enough that one `/cron-tick` run takes a while.
 - `database.py` disables asyncpg's prepared-statement cache
   (`statement_cache_size=0`) so it works against Supabase's pgbouncer
   connection poolers, not just a direct connection.
-- If a user ID errors as out-of-range for the SQLite-era schema: it won't
-  — `users.user_id` is `BIGINT`, which comfortably covers Telegram's user
-  ID range.
+- `users.user_id` is `BIGINT`, which comfortably covers Telegram's user ID
+  range.

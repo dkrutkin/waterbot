@@ -1,8 +1,15 @@
 aiogram>=3.4.0
 python-dotenv>=1.0.0
 asyncpg>=0.29.0
-APScheduler>=3.10.4
 tzdata>=2024.1
+
+# For app.py, the Vercel webhook deployment. Not needed if you only ever
+# run the bot locally via main.py (polling).
+fastapi>=0.110.0
+
+# For main.py, local polling mode only. Not needed on Vercel (app.py uses
+# an external cron pinger instead of an in-process scheduler).
+APScheduler>=3.10.4
 
 # Optional: enables "share my location" timezone auto-detect in /settings.
 # The bot works fine without it (manual timezone selection still works) -

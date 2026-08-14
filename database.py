@@ -61,6 +61,16 @@ CREATE TABLE IF NOT EXISTS daily_results (
     achieved SMALLINT NOT NULL,
     PRIMARY KEY (user_id, date)
 );
+
+-- Conversation state (FSM) storage. Needed so multi-step flows (onboarding,
+-- "enter a custom amount", settings text prompts) survive between separate
+-- serverless invocations when running on Vercel (see pg_storage.py). Also
+-- used locally so state survives a bot restart either way.
+CREATE TABLE IF NOT EXISTS fsm_storage (
+    storage_key TEXT PRIMARY KEY,
+    state TEXT,
+    data JSONB NOT NULL DEFAULT '{}'::jsonb
+);
 """
 
 _pool: Optional[asyncpg.Pool] = None
