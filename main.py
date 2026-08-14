@@ -1,8 +1,8 @@
 """Entry point for the Water Reminder Bot.
 
 Run with:  python main.py
-Requires TELEGRAM_BOT_TOKEN set in the environment or a .env file
-(see .env.example).
+Requires TELEGRAM_BOT_TOKEN and DATABASE_URL set in the environment or a
+.env file (see .env.example).
 """
 import asyncio
 import logging
@@ -25,6 +25,9 @@ logger = logging.getLogger("waterbot")
 async def main():
     if not config.TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN is not set. Create a .env file from .env.example.")
+        sys.exit(1)
+    if not config.DATABASE_URL:
+        logger.error("DATABASE_URL is not set. Add your Supabase connection string to .env.")
         sys.exit(1)
 
     await db.init_db()

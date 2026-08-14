@@ -5,7 +5,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-DB_PATH = os.getenv("WATERBOT_DB_PATH", "waterbot.db")
+
+# Postgres connection string for Supabase, e.g.:
+#   postgresql://postgres.xxxxxxxx:YOUR-PASSWORD@aws-0-region.pooler.supabase.com:5432/postgres
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 # --- Defaults for a new user ---
 DEFAULT_GOAL_ML = 2000

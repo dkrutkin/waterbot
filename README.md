@@ -10,12 +10,20 @@ requirements spec.
 python3 -m venv venv
 source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env          # then edit .env and paste your bot token
+cp .env.example .env          # then edit .env: bot token + Supabase DATABASE_URL
 python main.py
 ```
 
 Get a token from [@BotFather](https://t.me/BotFather) on Telegram and put it
 in `.env` as `TELEGRAM_BOT_TOKEN`.
+
+Get your database connection string from the Supabase dashboard: your
+project → **Project Settings → Database → Connection string → URI tab**.
+Use the **Session pooler** or **Transaction pooler** option (works over
+plain IPv4) rather than "Direct connection" unless you know your network
+has IPv6. Put it in `.env` as `DATABASE_URL`. The bot creates its own
+tables automatically the first time it runs — no manual schema setup
+needed.
 
 ## What's implemented
 
@@ -46,16 +54,17 @@ in `.env` as `TELEGRAM_BOT_TOKEN`.
   (ml/liters).
 - **Pause/resume** (`/pause`, `/resume`): stops/starts reminders only —
   consumption, goal, streak, and history are untouched.
-- **Persistence**: SQLite via `aiosqlite`, so state survives restarts.
-  Water is logged as individual timestamped events; goal achievement is
-  evaluated against the goal that was active on that day, per BR-07.
+- **Persistence**: Postgres (Supabase) via `asyncpg`, so state survives
+  restarts and lives in the cloud rather than a local file. Water is logged
+  as individual timestamped events; goal achievement is evaluated against
+  the goal that was active on that day, per BR-07.
 
 ## Project layout
 
 ```
 main.py            entry point: wires up aiogram, DB, and the scheduler
 config.py          static configuration/constants
-database.py        SQLite schema + queries (aiosqlite)
+database.py        Postgres/Supabase schema + queries (asyncpg)
 utils.py           timezone/date helpers, streak rollover, formatting
 logic.py           shared "log water + fire notifications" business logic
 keyboards.py       inline keyboard builders
@@ -81,3 +90,9 @@ handlers/           one router module per feature area
 - For heavier load, consider moving the per-tick "loop over all users" in
   `scheduler.py` to a per-user APScheduler job so it scales better with
   large user counts.
+- `database.py` disables asyncpg's prepared-statement cache
+  (`statement_cache_size=0`) so it works against Supabase's pgbouncer
+  connection poolers, not just a direct connection.
+- If a user ID errors as out-of-range for the SQLite-era schema: it won't
+  — `users.user_id` is `BIGINT`, which comfortably covers Telegram's user
+  ID range.
