@@ -1,0 +1,34 @@
+# Secrets / environment
+.env
+.env.*
+!.env.example
+
+# Local database (contains user data)
+*.db
+*.sqlite
+*.sqlite3
+waterbot.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Housekeeping folder used during setup
+_to_delete/
