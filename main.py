@@ -35,12 +35,19 @@ async def main():
         logger.error("DATABASE_URL is not set. Add your Supabase connection string to .env.")
         sys.exit(1)
 
-    await db.init_db()
-
     bot = Bot(token=config.TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
-    # In case a webhook was previously set (e.g. this bot was also deployed to
-    # Vercel), Telegram won't deliver updates via polling until it's cleared.
-    await bot.delete_webhook(drop_pending_updates=False)
+    webhook_info = await bot.get_webhook_info()
+    if webhook_info.url:
+        logger.error(
+            "A Telegram webhook is configured at %s, so local polling was not "
+            "started. To switch this bot to local polling intentionally, run "
+            "`python set_webhook.py --delete` first.",
+            webhook_info.url,
+        )
+        await bot.session.close()
+        return
+
+    await db.init_db()
 
     dp = Dispatcher(storage=PostgresStorage())
     for router in all_routers:
@@ -61,5 +68,5 @@ async def main():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
+    except KeyboardInterrupt:
         pass

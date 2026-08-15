@@ -13,7 +13,8 @@ code:
 
 Only one of these can be active for a given bot at a time (Telegram will
 reject long-polling while a webhook is set) — `set_webhook.py` switches
-between them.
+between them. To protect a production deployment, `main.py` will refuse to
+start while a webhook is configured instead of silently deleting it.
 
 ## Local setup (polling)
 
@@ -22,6 +23,7 @@ python3 -m venv venv
 source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env          # then edit .env: bot token + Supabase DATABASE_URL
+python set_webhook.py --delete # only when intentionally switching from Vercel
 python main.py
 ```
 
