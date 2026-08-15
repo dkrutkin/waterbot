@@ -4,6 +4,9 @@ from aiogram.fsm.state import State, StatesGroup
 
 class Onboarding(StatesGroup):
     waiting_for_goal = State()
+    waiting_for_timezone = State()
+    waiting_for_timezone_text = State()
+    waiting_for_timezone_location = State()
     waiting_for_reminder_start = State()
     waiting_for_reminder_end = State()
 

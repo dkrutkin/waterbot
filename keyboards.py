@@ -61,14 +61,21 @@ def frequency_options() -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def timezone_options() -> InlineKeyboardMarkup:
+def timezone_options(callback_prefix: str = "tz") -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for tz in config.COMMON_TIMEZONES:
-        kb.button(text=tz, callback_data=f"tz:{tz}")
-    kb.button(text="📍 Share location to auto-detect", callback_data="tz:location")
-    kb.button(text="✏️ Enter manually", callback_data="tz:custom")
-    kb.button(text="⬅️ Back", callback_data="menu:settings")
+        kb.button(text=tz, callback_data=f"{callback_prefix}:{tz}")
+    kb.button(text="📍 Share location to auto-detect", callback_data=f"{callback_prefix}:location")
+    kb.button(text="✏️ Enter manually", callback_data=f"{callback_prefix}:custom")
+    if callback_prefix == "tz":
+        kb.button(text="⬅️ Back", callback_data="menu:settings")
     kb.adjust(2)
+    return kb.as_markup()
+
+
+def default_time(value: str, callback_data: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=f"✅ Use default ({value})", callback_data=callback_data)
     return kb.as_markup()
 
 

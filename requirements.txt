@@ -11,7 +11,8 @@ fastapi>=0.110.0
 # an external cron pinger instead of an in-process scheduler).
 APScheduler>=3.10.4
 
-# Optional: enables "share my location" timezone auto-detect in /settings.
+# Optional: enables "share my location" timezone auto-detect during onboarding
+# and in /settings.
 # The bot works fine without it (manual timezone selection still works) -
 # comment this out if you don't want the extra download.
 timezonefinder>=6.4.0

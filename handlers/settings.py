@@ -79,8 +79,40 @@ async def settings_frequency_choice(callback: CallbackQuery):
 
 @router.callback_query(F.data == "settings:hours")
 async def settings_hours(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text("Send the *start* time for reminders, in HH:MM 24h format (e.g. `09:00`):", parse_mode="Markdown")
+    await callback.message.edit_text(
+        "Send the *start* time for reminders, in HH:MM 24h format (e.g. `09:00`):",
+        parse_mode="Markdown",
+        reply_markup=kb.default_time(
+            config.DEFAULT_REMINDER_START,
+            "settings_hours_start:default",
+        ),
+    )
     await state.set_state(SettingsFlow.waiting_for_hours_start)
+    await callback.answer()
+
+
+async def _ask_settings_hours_end(target: Message, state: FSMContext):
+    await target.answer(
+        "Now send the *end* time, in HH:MM 24h format (e.g. `22:00`):",
+        parse_mode="Markdown",
+        reply_markup=kb.default_time(
+            config.DEFAULT_REMINDER_END,
+            "settings_hours_end:default",
+        ),
+    )
+    await state.set_state(SettingsFlow.waiting_for_hours_end)
+
+
+@router.callback_query(
+    SettingsFlow.waiting_for_hours_start,
+    F.data == "settings_hours_start:default",
+)
+async def settings_hours_start_default(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(hours_start=config.DEFAULT_REMINDER_START)
+    await callback.message.edit_text(
+        f"🕘 Reminder start set to {config.DEFAULT_REMINDER_START}."
+    )
+    await _ask_settings_hours_end(callback.message, state)
     await callback.answer()
 
 
@@ -91,8 +123,29 @@ async def settings_hours_start_text(message: Message, state: FSMContext):
         await message.answer("Please send a valid time like `09:00`.", parse_mode="Markdown")
         return
     await state.update_data(hours_start=message.text.strip())
-    await message.answer("Now send the *end* time, in HH:MM 24h format (e.g. `22:00`):", parse_mode="Markdown")
-    await state.set_state(SettingsFlow.waiting_for_hours_end)
+    await _ask_settings_hours_end(message, state)
+
+
+@router.callback_query(
+    SettingsFlow.waiting_for_hours_end,
+    F.data == "settings_hours_end:default",
+)
+async def settings_hours_end_default(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    start = data.get("hours_start", config.DEFAULT_REMINDER_START)
+    end = config.DEFAULT_REMINDER_END
+    await db.update_user(
+        callback.from_user.id,
+        reminder_start=start,
+        reminder_end=end,
+    )
+    await state.clear()
+    user = await db.get_user(callback.from_user.id)
+    await callback.message.edit_text(
+        f"🕒 Active hours set to {start}-{end}.",
+        reply_markup=kb.settings_menu(user),
+    )
+    await callback.answer()
 
 
 @router.message(SettingsFlow.waiting_for_hours_end)

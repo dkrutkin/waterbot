@@ -84,8 +84,10 @@ need if you want a smaller Vercel bundle.
 
 ## What's implemented
 
-- **Onboarding** (`/start`): set a daily goal, active reminder hours, and
-  reminder frequency, then drops you into the main menu.
+- **Onboarding** (`/start`): set a daily goal, choose or auto-detect a
+  timezone, set active reminder hours, and choose a reminder frequency,
+  then drop into the main menu. Reminder start/end prompts include buttons
+  for the default 09:00-22:00 window as well as accepting custom times.
 - **Logging water** (`/water`, 💧 button): quick-add buttons for
   100/200/250/300/500 ml plus a validated custom-amount flow (positive
   integers only, capped to avoid fat-finger entries).
@@ -105,7 +107,8 @@ need if you want a smaller Vercel bundle.
   and untouched by later goal changes.
 - **Statistics** (`/stats`): last 7 days with per-day totals, goal, and a
   ✓ for days the goal was hit.
-- **Settings** (`/settings`): goal, reminder frequency, active hours,
+- **Settings** (`/settings`): goal, reminder frequency, active hours (with
+  default-time buttons or custom HH:MM input),
   notifications on/off, timezone (pick from a list, type an IANA name, or
   share your location to auto-detect via `timezonefinder`), and units
   (ml/liters).
