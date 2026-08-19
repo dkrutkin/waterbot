@@ -120,6 +120,9 @@ need if you want a smaller Vercel bundle.
   restarts and lives in the cloud rather than a local file. Water is logged
   as individual timestamped events; goal achievement is evaluated against
   the goal that was active on that day, per BR-07.
+- **Database security**: bot tables have Row-Level Security enabled and no
+  grants for Supabase Data API roles. Only the server-side direct Postgres
+  connection can access them; the database URL must remain secret.
 
 ## Project layout
 

@@ -71,6 +71,34 @@ CREATE TABLE IF NOT EXISTS fsm_storage (
     state TEXT,
     data JSONB NOT NULL DEFAULT '{}'::jsonb
 );
+
+-- These tables are internal to the bot and must not be reachable through
+-- Supabase's public Data API. The application connects directly to Postgres
+-- using the server-side DATABASE_URL, so it neither needs nor uses the anon,
+-- authenticated, or service_role API roles.
+REVOKE ALL PRIVILEGES ON TABLE
+    public.users,
+    public.water_logs,
+    public.daily_results,
+    public.fsm_storage
+FROM anon, authenticated, service_role;
+
+REVOKE ALL PRIVILEGES ON SEQUENCE public.water_logs_id_seq
+FROM anon, authenticated, service_role;
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.water_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.daily_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fsm_storage ENABLE ROW LEVEL SECURITY;
+
+-- Keep tables and sequences created by future migrations private by default.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+    REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES
+    FROM anon, authenticated, service_role;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+    REVOKE USAGE, SELECT ON SEQUENCES
+    FROM anon, authenticated, service_role;
 """
 
 _pool: Optional[asyncpg.Pool] = None
